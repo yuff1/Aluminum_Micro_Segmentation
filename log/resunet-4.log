@@ -1,0 +1,1259 @@
+2024-04-03 16:53:06,440 - mmseg - INFO - OpenCV num_threads is `64
+2024-04-03 16:53:07,886 - mmseg - INFO - Environment info:
+------------------------------------------------------------
+sys.platform: win32
+Python: 3.8.18 (default, Sep 11 2023, 13:39:12) [MSC v.1916 64 bit (AMD64)]
+CUDA available: True
+GPU 0: NVIDIA GeForce RTX 2080 Ti
+CUDA_HOME: C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.0
+NVCC: Cuda compilation tools, release 11.0, V11.0.194
+MSVC: 用于 x64 的 Microsoft (R) C/C++ 优化编译器 19.39.33521 版
+GCC: n/a
+PyTorch: 1.10.0+cu113
+PyTorch compiling details: PyTorch built with:
+  - C++ Version: 199711
+  - MSVC 192829337
+  - Intel(R) Math Kernel Library Version 2020.0.2 Product Build 20200624 for Intel(R) 64 architecture applications
+  - Intel(R) MKL-DNN v2.2.3 (Git Hash 7336ca9f055cf1bfa13efb658fe15dc9b41f0740)
+  - OpenMP 2019
+  - LAPACK is enabled (usually provided by MKL)
+  - CPU capability usage: AVX512
+  - CUDA Runtime 11.3
+  - NVCC architecture flags: -gencode;arch=compute_37,code=sm_37;-gencode;arch=compute_50,code=sm_50;-gencode;arch=compute_60,code=sm_60;-gencode;arch=compute_61,code=sm_61;-gencode;arch=compute_70,code=sm_70;-gencode;arch=compute_75,code=sm_75;-gencode;arch=compute_80,code=sm_80;-gencode;arch=compute_86,code=sm_86;-gencode;arch=compute_37,code=compute_37
+  - CuDNN 8.2
+  - Magma 2.5.4
+  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, CUDA_VERSION=11.3, CUDNN_VERSION=8.2.0, CXX_COMPILER=C:/w/b/windows/tmp_bin/sccache-cl.exe, CXX_FLAGS=/DWIN32 /D_WINDOWS /GR /EHsc /w /bigobj -DUSE_PTHREADPOOL -openmp:experimental -IC:/w/b/windows/mkl/include -DNDEBUG -DUSE_KINETO -DLIBKINETO_NOCUPTI -DUSE_FBGEMM -DUSE_XNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -DEDGE_PROFILER_USE_KINETO, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, PERF_WITH_AVX512=1, TORCH_VERSION=1.10.0, USE_CUDA=ON, USE_CUDNN=ON, USE_EXCEPTION_PTR=1, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=OFF, USE_OPENMP=ON, 
+
+TorchVision: 0.11.1+cu113
+OpenCV: 4.9.0
+MMCV: 1.7.0
+MMCV Compiler: MSVC 192829924
+MMCV CUDA Compiler: 11.3
+MMSegmentation: 0.29.1+
+------------------------------------------------------------
+
+2024-04-03 16:53:07,889 - mmseg - INFO - Distributed training: False
+2024-04-03 16:53:08,262 - mmseg - INFO - Config:
+norm_cfg = dict(type='SyncBN', requires_grad=True)
+backbone_norm_cfg = dict(type='SyncBN', requires_grad=True)
+model = dict(
+    type='EncoderDecoderFull',
+    decode_head=dict(
+        type='ResUNet',
+        channel=3,
+        num_classes=2,
+        loss_decode=[
+            dict(
+                type='CrossEntropyLoss',
+                use_sigmoid=True,
+                loss_name='loss_bce',
+                loss_weight=2.0),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=2.0)
+        ]))
+train_cfg = dict()
+test_cfg = dict(mode='whole')
+dataset_type = 'MyDataset'
+crop_size = (256, 256)
+train_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(type='LoadAnnotations'),
+    dict(type='Resize', img_scale=(300, 300)),
+    dict(type='RandomCrop', crop_size=(256, 256), cat_max_ratio=0.75),
+    dict(type='RandomFlip', flip_ratio=0.5),
+    dict(type='PhotoMetricDistortion'),
+    dict(type='Normalize', mean=[0, 0, 0], std=[1, 1, 1], to_rgb=True),
+    dict(type='Pad', size=(256, 256), pad_val=0, seg_pad_val=255),
+    dict(type='DefaultFormatBundle'),
+    dict(type='Collect', keys=['img', 'gt_semantic_seg'])
+]
+test_pipeline = [
+    dict(type='LoadImageFromFile'),
+    dict(
+        type='MultiScaleFlipAug',
+        img_scale=(256, 256),
+        flip=False,
+        transforms=[
+            dict(type='Resize', keep_ratio=False),
+            dict(type='Normalize', mean=[0, 0, 0], std=[1, 1, 1], to_rgb=True),
+            dict(type='ImageToTensor', keys=['img']),
+            dict(type='Collect', keys=['img'])
+        ])
+]
+data_root = './LIDC_IDRI_dataset/'
+data = dict(
+    samples_per_gpu=4,
+    workers_per_gpu=2,
+    train=dict(
+        type='MyDataset',
+        data_root='./LIDC_IDRI_dataset/',
+        img_dir='train/images',
+        ann_dir='train/labels',
+        pipeline=[
+            dict(type='LoadImageFromFile'),
+            dict(type='LoadAnnotations'),
+            dict(type='Resize', img_scale=(300, 300)),
+            dict(type='RandomCrop', crop_size=(256, 256), cat_max_ratio=0.75),
+            dict(type='RandomFlip', flip_ratio=0.5),
+            dict(type='PhotoMetricDistortion'),
+            dict(type='Normalize', mean=[0, 0, 0], std=[1, 1, 1], to_rgb=True),
+            dict(type='Pad', size=(256, 256), pad_val=0, seg_pad_val=255),
+            dict(type='DefaultFormatBundle'),
+            dict(type='Collect', keys=['img', 'gt_semantic_seg'])
+        ]),
+    val=dict(
+        type='MyDataset',
+        data_root='./LIDC_IDRI_dataset/',
+        img_dir='test/images',
+        ann_dir='test/labels',
+        pipeline=[
+            dict(type='LoadImageFromFile'),
+            dict(
+                type='MultiScaleFlipAug',
+                img_scale=(256, 256),
+                flip=False,
+                transforms=[
+                    dict(type='Resize', keep_ratio=False),
+                    dict(
+                        type='Normalize',
+                        mean=[0, 0, 0],
+                        std=[1, 1, 1],
+                        to_rgb=True),
+                    dict(type='ImageToTensor', keys=['img']),
+                    dict(type='Collect', keys=['img'])
+                ])
+        ]),
+    test=dict(
+        type='MyDataset',
+        data_root='./LIDC_IDRI_dataset/',
+        img_dir='test/images',
+        ann_dir='test/labels',
+        pipeline=[
+            dict(type='LoadImageFromFile'),
+            dict(
+                type='MultiScaleFlipAug',
+                img_scale=(256, 256),
+                flip=False,
+                transforms=[
+                    dict(type='Resize', keep_ratio=False),
+                    dict(
+                        type='Normalize',
+                        mean=[0, 0, 0],
+                        std=[1, 1, 1],
+                        to_rgb=True),
+                    dict(type='ImageToTensor', keys=['img']),
+                    dict(type='Collect', keys=['img'])
+                ])
+        ]))
+log_config = dict(
+    interval=500,
+    hooks=[
+        dict(type='TensorboardLoggerHook'),
+        dict(type='TextLoggerHook', by_epoch=False)
+    ])
+dist_params = dict(backend='nccl')
+log_level = 'INFO'
+load_from = None
+resume_from = None
+workflow = [('train', 1)]
+cudnn_benchmark = False
+find_unused_parameters = True
+optimizer = dict(type='Adam', lr=0.0005, betas=(0.9, 0.999))
+optimizer_config = dict()
+lr_config = dict(policy='poly', power=0.9, min_lr=1e-05, by_epoch=False)
+runner = dict(type='IterBasedRunner', max_iters=100000)
+checkpoint_config = dict(by_epoch=False, save_optimizer=False, interval=100000)
+evaluation = dict(interval=5000, metric=['mIoU', 'mFscore', 'mDice'])
+work_dir = './work_dirs/resunet'
+gpu_ids = [0]
+auto_resume = False
+
+2024-04-03 16:53:08,272 - mmseg - INFO - Set random seed to 1185748200, deterministic: False
+2024-04-03 16:53:08,375 - mmseg - INFO - initialize ResUNet with init_cfg {'type': 'Normal', 'std': 0.01, 'override': {'name': 'conv_seg'}}
+Name of parameter - Initialization information
+
+decode_head.conv_seg.weight - torch.Size([2, 64, 1, 1]): 
+NormalInit: mean=0, std=0.01, bias=0 
+
+decode_head.conv_seg.bias - torch.Size([2]): 
+NormalInit: mean=0, std=0.01, bias=0 
+
+decode_head.input_layer.0.weight - torch.Size([64, 3, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_layer.0.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_layer.1.weight - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_layer.1.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_layer.3.weight - torch.Size([64, 64, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_layer.3.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_skip.0.weight - torch.Size([64, 3, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.input_skip.0.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.0.weight - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.0.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.2.weight - torch.Size([128, 64, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.2.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.3.weight - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.3.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.5.weight - torch.Size([128, 128, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_block.5.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_skip.0.weight - torch.Size([128, 64, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_skip.0.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_skip.1.weight - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_1.conv_skip.1.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.0.weight - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.0.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.2.weight - torch.Size([256, 128, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.2.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.3.weight - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.3.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.5.weight - torch.Size([256, 256, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_block.5.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_skip.0.weight - torch.Size([256, 128, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_skip.0.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_skip.1.weight - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.residual_conv_2.conv_skip.1.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.0.weight - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.0.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.2.weight - torch.Size([512, 256, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.2.bias - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.3.weight - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.3.bias - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.5.weight - torch.Size([512, 512, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_block.5.bias - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_skip.0.weight - torch.Size([512, 256, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_skip.0.bias - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_skip.1.weight - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.bridge.conv_skip.1.bias - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.upsample_1.upsample.weight - torch.Size([512, 512, 2, 2]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.upsample_1.upsample.bias - torch.Size([512]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.0.weight - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.0.bias - torch.Size([768]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.2.weight - torch.Size([256, 768, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.2.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.3.weight - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.3.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.5.weight - torch.Size([256, 256, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_block.5.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_skip.0.weight - torch.Size([256, 768, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_skip.0.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_skip.1.weight - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv1.conv_skip.1.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.upsample_2.upsample.weight - torch.Size([256, 256, 2, 2]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.upsample_2.upsample.bias - torch.Size([256]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.0.weight - torch.Size([384]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.0.bias - torch.Size([384]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.2.weight - torch.Size([128, 384, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.2.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.3.weight - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.3.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.5.weight - torch.Size([128, 128, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_block.5.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_skip.0.weight - torch.Size([128, 384, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_skip.0.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_skip.1.weight - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv2.conv_skip.1.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.upsample_3.upsample.weight - torch.Size([128, 128, 2, 2]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.upsample_3.upsample.bias - torch.Size([128]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.0.weight - torch.Size([192]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.0.bias - torch.Size([192]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.2.weight - torch.Size([64, 192, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.2.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.3.weight - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.3.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.5.weight - torch.Size([64, 64, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_block.5.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_skip.0.weight - torch.Size([64, 192, 3, 3]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_skip.0.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_skip.1.weight - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.up_residual_conv3.conv_skip.1.bias - torch.Size([64]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.output_layer.0.weight - torch.Size([2, 64, 1, 1]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+
+decode_head.output_layer.0.bias - torch.Size([2]): 
+The value is the same before and after calling `init_weights` of EncoderDecoderFull  
+2024-04-03 16:53:08,389 - mmseg - INFO - EncoderDecoderFull(
+  (decode_head): ResUNet(
+    input_transform=None, ignore_index=255, align_corners=False
+    (loss_decode): ModuleList(
+      (0): CrossEntropyLoss(avg_non_ignore=False)
+      (1): DiceLoss()
+    )
+    (conv_seg): Conv2d(64, 2, kernel_size=(1, 1), stride=(1, 1))
+    (dropout): Dropout2d(p=0.1, inplace=False)
+    (input_layer): Sequential(
+      (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): ReLU()
+      (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    )
+    (input_skip): Sequential(
+      (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    )
+    (residual_conv_1): ResidualConv(
+      (conv_block): Sequential(
+        (0): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (1): ReLU()
+        (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        (3): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (4): ReLU()
+        (5): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (conv_skip): Sequential(
+        (0): Conv2d(64, 128, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        (1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (residual_conv_2): ResidualConv(
+      (conv_block): Sequential(
+        (0): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (1): ReLU()
+        (2): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        (3): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (4): ReLU()
+        (5): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (conv_skip): Sequential(
+        (0): Conv2d(128, 256, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (bridge): ResidualConv(
+      (conv_block): Sequential(
+        (0): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (1): ReLU()
+        (2): Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        (3): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (4): ReLU()
+        (5): Conv2d(512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (conv_skip): Sequential(
+        (0): Conv2d(256, 512, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1))
+        (1): BatchNorm2d(512, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (upsample_1): Upsample(
+      (upsample): ConvTranspose2d(512, 512, kernel_size=(2, 2), stride=(2, 2))
+    )
+    (up_residual_conv1): ResidualConv(
+      (conv_block): Sequential(
+        (0): BatchNorm2d(768, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (1): ReLU()
+        (2): Conv2d(768, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        (3): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (4): ReLU()
+        (5): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (conv_skip): Sequential(
+        (0): Conv2d(768, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        (1): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (upsample_2): Upsample(
+      (upsample): ConvTranspose2d(256, 256, kernel_size=(2, 2), stride=(2, 2))
+    )
+    (up_residual_conv2): ResidualConv(
+      (conv_block): Sequential(
+        (0): BatchNorm2d(384, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (1): ReLU()
+        (2): Conv2d(384, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        (3): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (4): ReLU()
+        (5): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (conv_skip): Sequential(
+        (0): Conv2d(384, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        (1): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (upsample_3): Upsample(
+      (upsample): ConvTranspose2d(128, 128, kernel_size=(2, 2), stride=(2, 2))
+    )
+    (up_residual_conv3): ResidualConv(
+      (conv_block): Sequential(
+        (0): BatchNorm2d(192, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (1): ReLU()
+        (2): Conv2d(192, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        (3): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+        (4): ReLU()
+        (5): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (conv_skip): Sequential(
+        (0): Conv2d(192, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      )
+    )
+    (output_layer): Sequential(
+      (0): Conv2d(64, 2, kernel_size=(1, 1), stride=(1, 1))
+      (1): Sigmoid()
+    )
+  )
+  init_cfg={'type': 'Normal', 'std': 0.01, 'override': {'name': 'conv_seg'}}
+)
+2024-04-03 16:53:08,671 - mmseg - INFO - Loaded 6154 images
+2024-04-03 16:53:09,337 - mmseg - INFO - Loaded 1526 images
+2024-04-03 16:53:09,338 - mmseg - INFO - Start running, host: DELL@DELL, work_dir: F:\fyf\ResUnet_all\seg_code\work_dirs\resunet
+2024-04-03 16:53:09,339 - mmseg - INFO - Hooks will be executed in the following order:
+before_run:
+(VERY_HIGH   ) PolyLrUpdaterHook                  
+(NORMAL      ) CheckpointHook                     
+(LOW         ) EvalHook                           
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+before_train_epoch:
+(VERY_HIGH   ) PolyLrUpdaterHook                  
+(LOW         ) IterTimerHook                      
+(LOW         ) EvalHook                           
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+before_train_iter:
+(VERY_HIGH   ) PolyLrUpdaterHook                  
+(LOW         ) IterTimerHook                      
+(LOW         ) EvalHook                           
+ -------------------- 
+after_train_iter:
+(ABOVE_NORMAL) OptimizerHook                      
+(NORMAL      ) CheckpointHook                     
+(LOW         ) IterTimerHook                      
+(LOW         ) EvalHook                           
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+after_train_epoch:
+(NORMAL      ) CheckpointHook                     
+(LOW         ) EvalHook                           
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+before_val_epoch:
+(LOW         ) IterTimerHook                      
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+before_val_iter:
+(LOW         ) IterTimerHook                      
+ -------------------- 
+after_val_iter:
+(LOW         ) IterTimerHook                      
+ -------------------- 
+after_val_epoch:
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+after_run:
+(VERY_LOW    ) TensorboardLoggerHook              
+(VERY_LOW    ) TextLoggerHook                     
+ -------------------- 
+2024-04-03 16:53:09,343 - mmseg - INFO - workflow: [('train', 1)], max: 100000 iters
+2024-04-03 16:53:09,344 - mmseg - INFO - Checkpoints will be saved to F:\fyf\ResUnet_all\seg_code\work_dirs\resunet by HardDiskBackend.
+2024-04-03 16:54:56,718 - mmseg - INFO - Iter [500/100000]	lr: 4.978e-04, eta: 5:31:38, time: 0.200, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0427, decode.loss_dice: 0.6265, decode.acc_seg: 96.4209, loss: 1.6692
+2024-04-03 16:56:33,869 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 16:56:33,870 - mmseg - INFO - Iter [1000/100000]	lr: 4.956e-04, eta: 5:25:16, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0352, decode.loss_dice: 0.6195, decode.acc_seg: 96.9893, loss: 1.6547
+2024-04-03 16:58:11,004 - mmseg - INFO - Iter [1500/100000]	lr: 4.934e-04, eta: 5:22:03, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0343, decode.loss_dice: 0.6097, decode.acc_seg: 97.0878, loss: 1.6441
+2024-04-03 16:59:49,687 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 16:59:49,688 - mmseg - INFO - Iter [2000/100000]	lr: 4.912e-04, eta: 5:20:54, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0339, decode.loss_dice: 0.6041, decode.acc_seg: 97.1368, loss: 1.6380
+2024-04-03 17:01:26,287 - mmseg - INFO - Iter [2500/100000]	lr: 4.890e-04, eta: 5:18:12, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0329, decode.loss_dice: 0.6124, decode.acc_seg: 97.2372, loss: 1.6454
+2024-04-03 17:03:02,791 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:03:02,792 - mmseg - INFO - Iter [3000/100000]	lr: 4.868e-04, eta: 5:15:48, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0324, decode.loss_dice: 0.6081, decode.acc_seg: 97.2869, loss: 1.6405
+2024-04-03 17:04:41,300 - mmseg - INFO - Iter [3500/100000]	lr: 4.845e-04, eta: 5:14:34, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0324, decode.loss_dice: 0.6060, decode.acc_seg: 97.2882, loss: 1.6384
+2024-04-03 17:06:17,733 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:06:17,733 - mmseg - INFO - Iter [4000/100000]	lr: 4.823e-04, eta: 5:12:23, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0324, decode.loss_dice: 0.6076, decode.acc_seg: 97.2859, loss: 1.6400
+2024-04-03 17:07:54,153 - mmseg - INFO - Iter [4500/100000]	lr: 4.801e-04, eta: 5:10:20, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0320, decode.loss_dice: 0.6043, decode.acc_seg: 97.3344, loss: 1.6363
+2024-04-03 17:09:32,623 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:09:32,624 - mmseg - INFO - Iter [5000/100000]	lr: 4.779e-04, eta: 5:09:01, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0318, decode.loss_dice: 0.6024, decode.acc_seg: 97.3540, loss: 1.6342
+2024-04-03 17:10:21,156 - mmseg - INFO - per class results:
+2024-04-03 17:10:21,163 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.18 | 50.62 | 53.83 | 49.32 | 98.73 | 98.84  |    98.7   | 98.98  | 98.55 |
+|   tumor    | 81.66 | 67.14 | 54.95 |  54.9 | 80.94 | 86.04  |    87.4   | 84.75  | 82.55 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 17:10:21,164 - mmseg - INFO - Summary:
+2024-04-03 17:10:21,165 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.29 | 89.92 | 58.88 | 54.39 | 52.11 | 89.83 |  92.44  |   93.05    |  91.86  | 90.55 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 17:10:21,175 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:10:21,175 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9829, mIoU: 0.8992, mVOE: 0.5888, mASD: 0.5439, mMSSD: 0.5211, mAcc: 0.8983, mFscore: 0.9244, mPrecision: 0.9305, mRecall: 0.9186, mDice: 0.9055, IoU.background: 0.9818, IoU.tumor: 0.8166, VOE.background: 0.5062, VOE.tumor: 0.6714, ASD.background: 0.5383, ASD.tumor: 0.5495, MSSD.background: 0.4932, MSSD.tumor: 0.5490, Acc.background: 0.9873, Acc.tumor: 0.8094, Fscore.background: 0.9884, Fscore.tumor: 0.8604, Precision.background: 0.9870, Precision.tumor: 0.8740, Recall.background: 0.9898, Recall.tumor: 0.8475, Dice.background: 0.9855, Dice.tumor: 0.8255
+2024-04-03 17:11:58,008 - mmseg - INFO - Iter [5500/100000]	lr: 4.757e-04, eta: 5:21:05, time: 0.291, data_time: 0.099, memory: 2625, decode.loss_bce: 1.0316, decode.loss_dice: 0.6064, decode.acc_seg: 97.3725, loss: 1.6380
+2024-04-03 17:13:35,114 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:13:35,115 - mmseg - INFO - Iter [6000/100000]	lr: 4.735e-04, eta: 5:18:07, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0319, decode.loss_dice: 0.6037, decode.acc_seg: 97.3418, loss: 1.6356
+2024-04-03 17:15:13,996 - mmseg - INFO - Iter [6500/100000]	lr: 4.712e-04, eta: 5:15:47, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0313, decode.loss_dice: 0.6051, decode.acc_seg: 97.4029, loss: 1.6365
+2024-04-03 17:16:50,781 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:16:50,782 - mmseg - INFO - Iter [7000/100000]	lr: 4.690e-04, eta: 5:13:06, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0313, decode.loss_dice: 0.6052, decode.acc_seg: 97.4090, loss: 1.6365
+2024-04-03 17:18:27,413 - mmseg - INFO - Iter [7500/100000]	lr: 4.668e-04, eta: 5:10:31, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0315, decode.loss_dice: 0.6030, decode.acc_seg: 97.3800, loss: 1.6346
+2024-04-03 17:20:05,928 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:20:05,929 - mmseg - INFO - Iter [8000/100000]	lr: 4.646e-04, eta: 5:08:25, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0315, decode.loss_dice: 0.5987, decode.acc_seg: 97.3787, loss: 1.6302
+2024-04-03 17:21:42,888 - mmseg - INFO - Iter [8500/100000]	lr: 4.624e-04, eta: 5:06:05, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0309, decode.loss_dice: 0.5990, decode.acc_seg: 97.4466, loss: 1.6299
+2024-04-03 17:23:19,794 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:23:19,794 - mmseg - INFO - Iter [9000/100000]	lr: 4.601e-04, eta: 5:03:50, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0310, decode.loss_dice: 0.6084, decode.acc_seg: 97.4356, loss: 1.6394
+2024-04-03 17:24:58,333 - mmseg - INFO - Iter [9500/100000]	lr: 4.579e-04, eta: 5:01:54, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0306, decode.loss_dice: 0.6074, decode.acc_seg: 97.4773, loss: 1.6380
+2024-04-03 17:26:34,832 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:26:34,833 - mmseg - INFO - Iter [10000/100000]	lr: 4.557e-04, eta: 4:59:42, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0308, decode.loss_dice: 0.5992, decode.acc_seg: 97.4500, loss: 1.6300
+2024-04-03 17:27:16,450 - mmseg - INFO - per class results:
+2024-04-03 17:27:16,452 - mmseg - INFO - 
++------------+-------+-------+-------+-------+------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD | Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+------+--------+-----------+--------+-------+
+| background | 98.18 | 50.62 | 53.86 | 49.47 | 99.2 | 98.84  |   98.33   | 99.36  | 98.55 |
+|   tumor    | 80.37 | 68.43 | 55.32 | 56.77 | 75.1 | 84.82  |    90.7   | 80.08  | 81.02 |
++------------+-------+-------+-------+-------+------+--------+-----------+--------+-------+
+2024-04-03 17:27:16,453 - mmseg - INFO - Summary:
+2024-04-03 17:27:16,454 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.28 | 89.27 | 59.53 | 54.59 | 53.12 | 87.15 |  91.83  |   94.52    |  89.72  | 89.79 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 17:27:16,462 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:27:16,463 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9828, mIoU: 0.8927, mVOE: 0.5953, mASD: 0.5459, mMSSD: 0.5312, mAcc: 0.8715, mFscore: 0.9183, mPrecision: 0.9452, mRecall: 0.8972, mDice: 0.8979, IoU.background: 0.9818, IoU.tumor: 0.8037, VOE.background: 0.5062, VOE.tumor: 0.6843, ASD.background: 0.5386, ASD.tumor: 0.5532, MSSD.background: 0.4947, MSSD.tumor: 0.5677, Acc.background: 0.9920, Acc.tumor: 0.7510, Fscore.background: 0.9884, Fscore.tumor: 0.8482, Precision.background: 0.9833, Precision.tumor: 0.9070, Recall.background: 0.9936, Recall.tumor: 0.8008, Dice.background: 0.9855, Dice.tumor: 0.8102
+2024-04-03 17:28:52,982 - mmseg - INFO - Iter [10500/100000]	lr: 4.534e-04, eta: 5:03:28, time: 0.276, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0307, decode.loss_dice: 0.6000, decode.acc_seg: 97.4694, loss: 1.6307
+2024-04-03 17:30:31,764 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:30:31,764 - mmseg - INFO - Iter [11000/100000]	lr: 4.512e-04, eta: 5:01:23, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0307, decode.loss_dice: 0.6024, decode.acc_seg: 97.4668, loss: 1.6331
+2024-04-03 17:32:08,396 - mmseg - INFO - Iter [11500/100000]	lr: 4.490e-04, eta: 4:59:03, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0305, decode.loss_dice: 0.6037, decode.acc_seg: 97.4856, loss: 1.6343
+2024-04-03 17:33:45,400 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:33:45,401 - mmseg - INFO - Iter [12000/100000]	lr: 4.468e-04, eta: 4:56:49, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0306, decode.loss_dice: 0.5993, decode.acc_seg: 97.4760, loss: 1.6300
+2024-04-03 17:35:24,468 - mmseg - INFO - Iter [12500/100000]	lr: 4.445e-04, eta: 4:54:53, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0303, decode.loss_dice: 0.6007, decode.acc_seg: 97.5126, loss: 1.6310
+2024-04-03 17:37:01,358 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:37:01,358 - mmseg - INFO - Iter [13000/100000]	lr: 4.423e-04, eta: 4:52:44, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0306, decode.loss_dice: 0.5980, decode.acc_seg: 97.4719, loss: 1.6286
+2024-04-03 17:38:38,210 - mmseg - INFO - Iter [13500/100000]	lr: 4.400e-04, eta: 4:50:37, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0302, decode.loss_dice: 0.6038, decode.acc_seg: 97.5156, loss: 1.6341
+2024-04-03 17:40:17,136 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:40:17,137 - mmseg - INFO - Iter [14000/100000]	lr: 4.378e-04, eta: 4:48:44, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0301, decode.loss_dice: 0.5999, decode.acc_seg: 97.5250, loss: 1.6300
+2024-04-03 17:41:54,103 - mmseg - INFO - Iter [14500/100000]	lr: 4.356e-04, eta: 4:46:42, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0303, decode.loss_dice: 0.5980, decode.acc_seg: 97.5133, loss: 1.6282
+2024-04-03 17:43:31,103 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:43:31,104 - mmseg - INFO - Iter [15000/100000]	lr: 4.333e-04, eta: 4:44:41, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0303, decode.loss_dice: 0.6008, decode.acc_seg: 97.5138, loss: 1.6310
+2024-04-03 17:44:14,643 - mmseg - INFO - per class results:
+2024-04-03 17:44:14,645 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 97.88 | 50.92 | 53.91 | 49.69 | 99.44 | 98.65  |   97.77   | 99.55  | 98.31 |
+|   tumor    | 76.21 | 72.59 | 55.88 | 59.56 | 66.36 | 80.63  |   92.03   | 73.09  | 75.79 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 17:44:14,645 - mmseg - INFO - Summary:
+2024-04-03 17:44:14,646 - mmseg - INFO - 
++-------+-------+-------+------+-------+------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE | mASD | mMSSD | mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+------+-------+------+---------+------------+---------+-------+
+| 97.98 | 87.05 | 61.75 | 54.9 | 54.63 | 82.9 |  89.64  |    94.9    |  86.32  | 87.05 |
++-------+-------+-------+------+-------+------+---------+------------+---------+-------+
+2024-04-03 17:44:14,654 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:44:14,654 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9798, mIoU: 0.8705, mVOE: 0.6175, mASD: 0.5490, mMSSD: 0.5463, mAcc: 0.8290, mFscore: 0.8964, mPrecision: 0.9490, mRecall: 0.8632, mDice: 0.8705, IoU.background: 0.9788, IoU.tumor: 0.7621, VOE.background: 0.5092, VOE.tumor: 0.7259, ASD.background: 0.5391, ASD.tumor: 0.5588, MSSD.background: 0.4969, MSSD.tumor: 0.5956, Acc.background: 0.9944, Acc.tumor: 0.6636, Fscore.background: 0.9865, Fscore.tumor: 0.8063, Precision.background: 0.9777, Precision.tumor: 0.9203, Recall.background: 0.9955, Recall.tumor: 0.7309, Dice.background: 0.9831, Dice.tumor: 0.7579
+2024-04-03 17:45:53,785 - mmseg - INFO - Iter [15500/100000]	lr: 4.311e-04, eta: 4:46:50, time: 0.285, data_time: 0.093, memory: 2625, decode.loss_bce: 1.0297, decode.loss_dice: 0.6049, decode.acc_seg: 97.5756, loss: 1.6346
+2024-04-03 17:47:31,160 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:47:31,160 - mmseg - INFO - Iter [16000/100000]	lr: 4.288e-04, eta: 4:44:45, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0302, decode.loss_dice: 0.5994, decode.acc_seg: 97.5141, loss: 1.6296
+2024-04-03 17:49:08,296 - mmseg - INFO - Iter [16500/100000]	lr: 4.266e-04, eta: 4:42:40, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0298, decode.loss_dice: 0.5998, decode.acc_seg: 97.5602, loss: 1.6295
+2024-04-03 17:50:47,244 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:50:47,244 - mmseg - INFO - Iter [17000/100000]	lr: 4.244e-04, eta: 4:40:46, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0300, decode.loss_dice: 0.6010, decode.acc_seg: 97.5397, loss: 1.6310
+2024-04-03 17:52:24,063 - mmseg - INFO - Iter [17500/100000]	lr: 4.221e-04, eta: 4:38:42, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0305, decode.loss_dice: 0.5979, decode.acc_seg: 97.4821, loss: 1.6284
+2024-04-03 17:54:00,888 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:54:00,889 - mmseg - INFO - Iter [18000/100000]	lr: 4.199e-04, eta: 4:36:40, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0297, decode.loss_dice: 0.6009, decode.acc_seg: 97.5696, loss: 1.6306
+2024-04-03 17:55:39,796 - mmseg - INFO - Iter [18500/100000]	lr: 4.176e-04, eta: 4:34:49, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0296, decode.loss_dice: 0.6022, decode.acc_seg: 97.5759, loss: 1.6318
+2024-04-03 17:57:16,567 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 17:57:16,568 - mmseg - INFO - Iter [19000/100000]	lr: 4.154e-04, eta: 4:32:49, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0297, decode.loss_dice: 0.6000, decode.acc_seg: 97.5740, loss: 1.6297
+2024-04-03 17:58:53,450 - mmseg - INFO - Iter [19500/100000]	lr: 4.131e-04, eta: 4:30:51, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0298, decode.loss_dice: 0.5987, decode.acc_seg: 97.5616, loss: 1.6284
+2024-04-03 18:00:32,375 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:00:32,375 - mmseg - INFO - Iter [20000/100000]	lr: 4.109e-04, eta: 4:29:02, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0295, decode.loss_dice: 0.5978, decode.acc_seg: 97.5911, loss: 1.6273
+2024-04-03 18:01:15,312 - mmseg - INFO - per class results:
+2024-04-03 18:01:15,313 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.15 | 50.65 | 53.86 | 49.46 | 99.13 | 98.82  |   98.34   | 99.31  | 98.52 |
+|   tumor    | 80.21 | 68.59 | 55.31 |  56.7 | 75.32 | 84.67  |   90.06   | 80.26  | 80.84 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 18:01:15,314 - mmseg - INFO - Summary:
+2024-04-03 18:01:15,315 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.25 | 89.18 | 59.62 | 54.59 | 53.08 | 87.23 |  91.74  |    94.2    |  89.78  | 89.68 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 18:01:15,324 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:01:15,324 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9825, mIoU: 0.8918, mVOE: 0.5962, mASD: 0.5459, mMSSD: 0.5308, mAcc: 0.8723, mFscore: 0.9174, mPrecision: 0.9420, mRecall: 0.8978, mDice: 0.8968, IoU.background: 0.9815, IoU.tumor: 0.8021, VOE.background: 0.5065, VOE.tumor: 0.6859, ASD.background: 0.5386, ASD.tumor: 0.5531, MSSD.background: 0.4946, MSSD.tumor: 0.5670, Acc.background: 0.9913, Acc.tumor: 0.7532, Fscore.background: 0.9882, Fscore.tumor: 0.8467, Precision.background: 0.9834, Precision.tumor: 0.9006, Recall.background: 0.9931, Recall.tumor: 0.8026, Dice.background: 0.9852, Dice.tumor: 0.8084
+2024-04-03 18:02:52,586 - mmseg - INFO - Iter [20500/100000]	lr: 4.086e-04, eta: 4:29:53, time: 0.280, data_time: 0.088, memory: 2625, decode.loss_bce: 1.0294, decode.loss_dice: 0.6018, decode.acc_seg: 97.6037, loss: 1.6311
+2024-04-03 18:04:30,358 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:04:30,358 - mmseg - INFO - Iter [21000/100000]	lr: 4.063e-04, eta: 4:27:56, time: 0.196, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0294, decode.loss_dice: 0.6010, decode.acc_seg: 97.6021, loss: 1.6303
+2024-04-03 18:06:07,868 - mmseg - INFO - Iter [21500/100000]	lr: 4.041e-04, eta: 4:25:59, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0297, decode.loss_dice: 0.5951, decode.acc_seg: 97.5678, loss: 1.6248
+2024-04-03 18:07:47,087 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:07:47,088 - mmseg - INFO - Iter [22000/100000]	lr: 4.018e-04, eta: 4:24:09, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0294, decode.loss_dice: 0.5965, decode.acc_seg: 97.5981, loss: 1.6260
+2024-04-03 18:09:24,320 - mmseg - INFO - Iter [22500/100000]	lr: 3.996e-04, eta: 4:22:12, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0293, decode.loss_dice: 0.6021, decode.acc_seg: 97.6158, loss: 1.6313
+2024-04-03 18:11:01,389 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:11:01,390 - mmseg - INFO - Iter [23000/100000]	lr: 3.973e-04, eta: 4:20:16, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0296, decode.loss_dice: 0.5965, decode.acc_seg: 97.5813, loss: 1.6261
+2024-04-03 18:12:40,242 - mmseg - INFO - Iter [23500/100000]	lr: 3.950e-04, eta: 4:18:26, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0294, decode.loss_dice: 0.5963, decode.acc_seg: 97.6013, loss: 1.6257
+2024-04-03 18:14:17,090 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:14:17,091 - mmseg - INFO - Iter [24000/100000]	lr: 3.928e-04, eta: 4:16:30, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0296, decode.loss_dice: 0.5964, decode.acc_seg: 97.5840, loss: 1.6260
+2024-04-03 18:15:53,928 - mmseg - INFO - Iter [24500/100000]	lr: 3.905e-04, eta: 4:14:35, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0288, decode.loss_dice: 0.6017, decode.acc_seg: 97.6598, loss: 1.6306
+2024-04-03 18:17:32,779 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:17:32,780 - mmseg - INFO - Iter [25000/100000]	lr: 3.882e-04, eta: 4:12:47, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0291, decode.loss_dice: 0.6047, decode.acc_seg: 97.6345, loss: 1.6338
+2024-04-03 18:18:16,310 - mmseg - INFO - per class results:
+2024-04-03 18:18:16,312 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.15 | 50.65 | 53.87 | 49.49 | 99.24 | 98.82  |   98.27   | 99.39  | 98.53 |
+|   tumor    | 79.99 | 68.81 | 55.38 | 57.06 | 74.19 | 84.46  |   90.93   | 79.35  | 80.57 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 18:18:16,313 - mmseg - INFO - Summary:
+2024-04-03 18:18:16,313 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.25 | 89.07 | 59.73 | 54.63 | 53.28 | 86.71 |  91.64  |    94.6    |  89.37  | 89.55 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 18:18:16,322 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:18:16,323 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9825, mIoU: 0.8907, mVOE: 0.5973, mASD: 0.5463, mMSSD: 0.5328, mAcc: 0.8671, mFscore: 0.9164, mPrecision: 0.9460, mRecall: 0.8937, mDice: 0.8955, IoU.background: 0.9815, IoU.tumor: 0.7999, VOE.background: 0.5065, VOE.tumor: 0.6881, ASD.background: 0.5387, ASD.tumor: 0.5538, MSSD.background: 0.4949, MSSD.tumor: 0.5706, Acc.background: 0.9924, Acc.tumor: 0.7419, Fscore.background: 0.9882, Fscore.tumor: 0.8446, Precision.background: 0.9827, Precision.tumor: 0.9093, Recall.background: 0.9939, Recall.tumor: 0.7935, Dice.background: 0.9853, Dice.tumor: 0.8057
+2024-04-03 18:19:53,512 - mmseg - INFO - Iter [25500/100000]	lr: 3.860e-04, eta: 4:13:02, time: 0.281, data_time: 0.089, memory: 2625, decode.loss_bce: 1.0292, decode.loss_dice: 0.5973, decode.acc_seg: 97.6241, loss: 1.6264
+2024-04-03 18:21:31,053 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:21:31,053 - mmseg - INFO - Iter [26000/100000]	lr: 3.837e-04, eta: 4:11:08, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0292, decode.loss_dice: 0.5959, decode.acc_seg: 97.6233, loss: 1.6251
+2024-04-03 18:23:10,272 - mmseg - INFO - Iter [26500/100000]	lr: 3.814e-04, eta: 4:09:19, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0294, decode.loss_dice: 0.5935, decode.acc_seg: 97.6069, loss: 1.6229
+2024-04-03 18:24:47,356 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:24:47,356 - mmseg - INFO - Iter [27000/100000]	lr: 3.791e-04, eta: 4:07:24, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0292, decode.loss_dice: 0.5994, decode.acc_seg: 97.6229, loss: 1.6286
+2024-04-03 18:26:24,366 - mmseg - INFO - Iter [27500/100000]	lr: 3.769e-04, eta: 4:05:30, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0286, decode.loss_dice: 0.5984, decode.acc_seg: 97.6853, loss: 1.6270
+2024-04-03 18:28:03,393 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:28:03,394 - mmseg - INFO - Iter [28000/100000]	lr: 3.746e-04, eta: 4:03:42, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0292, decode.loss_dice: 0.5976, decode.acc_seg: 97.6242, loss: 1.6268
+2024-04-03 18:29:40,693 - mmseg - INFO - Iter [28500/100000]	lr: 3.723e-04, eta: 4:01:50, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0291, decode.loss_dice: 0.5947, decode.acc_seg: 97.6351, loss: 1.6238
+2024-04-03 18:31:17,674 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:31:17,675 - mmseg - INFO - Iter [29000/100000]	lr: 3.700e-04, eta: 3:59:57, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0286, decode.loss_dice: 0.6015, decode.acc_seg: 97.6809, loss: 1.6302
+2024-04-03 18:32:56,715 - mmseg - INFO - Iter [29500/100000]	lr: 3.677e-04, eta: 3:58:10, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0289, decode.loss_dice: 0.5972, decode.acc_seg: 97.6537, loss: 1.6261
+2024-04-03 18:34:33,764 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:34:33,765 - mmseg - INFO - Iter [30000/100000]	lr: 3.655e-04, eta: 3:56:19, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0289, decode.loss_dice: 0.5959, decode.acc_seg: 97.6535, loss: 1.6248
+2024-04-03 18:35:15,844 - mmseg - INFO - per class results:
+2024-04-03 18:35:15,845 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.11 | 50.69 | 53.88 | 49.53 | 99.28 |  98.8  |   98.18   | 99.42  |  98.5 |
+|   tumor    |  79.4 |  69.4 | 55.47 | 57.48 | 72.87 | 83.88  |   91.17   | 78.29  | 79.85 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 18:35:15,846 - mmseg - INFO - Summary:
+2024-04-03 18:35:15,847 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.21 | 88.75 | 60.05 | 54.67 |  53.5 | 86.07 |  91.34  |   94.68    |  88.86  | 89.17 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 18:35:15,856 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:35:15,856 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9821, mIoU: 0.8875, mVOE: 0.6005, mASD: 0.5467, mMSSD: 0.5350, mAcc: 0.8607, mFscore: 0.9134, mPrecision: 0.9468, mRecall: 0.8886, mDice: 0.8917, IoU.background: 0.9811, IoU.tumor: 0.7940, VOE.background: 0.5069, VOE.tumor: 0.6940, ASD.background: 0.5388, ASD.tumor: 0.5547, MSSD.background: 0.4953, MSSD.tumor: 0.5748, Acc.background: 0.9928, Acc.tumor: 0.7287, Fscore.background: 0.9880, Fscore.tumor: 0.8388, Precision.background: 0.9818, Precision.tumor: 0.9117, Recall.background: 0.9942, Recall.tumor: 0.7829, Dice.background: 0.9850, Dice.tumor: 0.7985
+2024-04-03 18:36:53,302 - mmseg - INFO - Iter [30500/100000]	lr: 3.632e-04, eta: 3:56:05, time: 0.279, data_time: 0.086, memory: 2625, decode.loss_bce: 1.0290, decode.loss_dice: 0.5992, decode.acc_seg: 97.6491, loss: 1.6281
+2024-04-03 18:38:32,942 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:38:32,943 - mmseg - INFO - Iter [31000/100000]	lr: 3.609e-04, eta: 3:54:18, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0286, decode.loss_dice: 0.5998, decode.acc_seg: 97.6863, loss: 1.6284
+2024-04-03 18:40:10,378 - mmseg - INFO - Iter [31500/100000]	lr: 3.586e-04, eta: 3:52:26, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0286, decode.loss_dice: 0.6009, decode.acc_seg: 97.6877, loss: 1.6294
+2024-04-03 18:41:47,592 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:41:47,593 - mmseg - INFO - Iter [32000/100000]	lr: 3.563e-04, eta: 3:50:35, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0287, decode.loss_dice: 0.5944, decode.acc_seg: 97.6714, loss: 1.6231
+2024-04-03 18:43:26,629 - mmseg - INFO - Iter [32500/100000]	lr: 3.540e-04, eta: 3:48:47, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0286, decode.loss_dice: 0.5989, decode.acc_seg: 97.6880, loss: 1.6274
+2024-04-03 18:45:03,579 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:45:03,580 - mmseg - INFO - Iter [33000/100000]	lr: 3.517e-04, eta: 3:46:56, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0285, decode.loss_dice: 0.5958, decode.acc_seg: 97.6968, loss: 1.6243
+2024-04-03 18:46:40,553 - mmseg - INFO - Iter [33500/100000]	lr: 3.494e-04, eta: 3:45:05, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0286, decode.loss_dice: 0.5976, decode.acc_seg: 97.6882, loss: 1.6261
+2024-04-03 18:48:19,498 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:48:19,499 - mmseg - INFO - Iter [34000/100000]	lr: 3.471e-04, eta: 3:43:19, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0287, decode.loss_dice: 0.5976, decode.acc_seg: 97.6759, loss: 1.6263
+2024-04-03 18:49:56,391 - mmseg - INFO - Iter [34500/100000]	lr: 3.448e-04, eta: 3:41:28, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0288, decode.loss_dice: 0.5956, decode.acc_seg: 97.6574, loss: 1.6244
+2024-04-03 18:51:33,334 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:51:33,334 - mmseg - INFO - Iter [35000/100000]	lr: 3.425e-04, eta: 3:39:39, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0285, decode.loss_dice: 0.5947, decode.acc_seg: 97.6964, loss: 1.6232
+2024-04-03 18:52:14,985 - mmseg - INFO - per class results:
+2024-04-03 18:52:14,986 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.19 | 50.61 | 53.87 | 49.48 | 99.26 | 98.85  |    98.3   | 99.41  | 98.56 |
+|   tumor    | 80.32 | 68.48 | 55.35 | 56.92 | 74.62 | 84.78  |    91.2   | 79.69  | 80.97 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 18:52:14,987 - mmseg - INFO - Summary:
+2024-04-03 18:52:14,988 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.28 | 89.26 | 59.54 | 54.61 |  53.2 | 86.94 |  91.81  |   94.75    |  89.55  | 89.76 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 18:52:14,996 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:52:14,997 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9828, mIoU: 0.8926, mVOE: 0.5954, mASD: 0.5461, mMSSD: 0.5320, mAcc: 0.8694, mFscore: 0.9181, mPrecision: 0.9475, mRecall: 0.8955, mDice: 0.8976, IoU.background: 0.9819, IoU.tumor: 0.8032, VOE.background: 0.5061, VOE.tumor: 0.6848, ASD.background: 0.5387, ASD.tumor: 0.5535, MSSD.background: 0.4948, MSSD.tumor: 0.5692, Acc.background: 0.9926, Acc.tumor: 0.7462, Fscore.background: 0.9885, Fscore.tumor: 0.8478, Precision.background: 0.9830, Precision.tumor: 0.9120, Recall.background: 0.9941, Recall.tumor: 0.7969, Dice.background: 0.9856, Dice.tumor: 0.8097
+2024-04-03 18:53:54,123 - mmseg - INFO - Iter [35500/100000]	lr: 3.402e-04, eta: 3:39:09, time: 0.282, data_time: 0.089, memory: 2625, decode.loss_bce: 1.0285, decode.loss_dice: 0.5952, decode.acc_seg: 97.6972, loss: 1.6236
+2024-04-03 18:55:31,649 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:55:31,650 - mmseg - INFO - Iter [36000/100000]	lr: 3.379e-04, eta: 3:37:19, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0282, decode.loss_dice: 0.5960, decode.acc_seg: 97.7274, loss: 1.6242
+2024-04-03 18:57:09,005 - mmseg - INFO - Iter [36500/100000]	lr: 3.356e-04, eta: 3:35:29, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0285, decode.loss_dice: 0.5968, decode.acc_seg: 97.6988, loss: 1.6252
+2024-04-03 18:58:48,151 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 18:58:48,151 - mmseg - INFO - Iter [37000/100000]	lr: 3.333e-04, eta: 3:33:43, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0283, decode.loss_dice: 0.5978, decode.acc_seg: 97.7133, loss: 1.6261
+2024-04-03 19:00:25,091 - mmseg - INFO - Iter [37500/100000]	lr: 3.310e-04, eta: 3:31:53, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0281, decode.loss_dice: 0.5959, decode.acc_seg: 97.7347, loss: 1.6240
+2024-04-03 19:02:02,124 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:02:02,125 - mmseg - INFO - Iter [38000/100000]	lr: 3.287e-04, eta: 3:30:04, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0283, decode.loss_dice: 0.5971, decode.acc_seg: 97.7139, loss: 1.6254
+2024-04-03 19:03:41,182 - mmseg - INFO - Iter [38500/100000]	lr: 3.264e-04, eta: 3:28:18, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0284, decode.loss_dice: 0.5967, decode.acc_seg: 97.7054, loss: 1.6251
+2024-04-03 19:05:18,023 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:05:18,023 - mmseg - INFO - Iter [39000/100000]	lr: 3.241e-04, eta: 3:26:29, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0282, decode.loss_dice: 0.5941, decode.acc_seg: 97.7207, loss: 1.6223
+2024-04-03 19:06:54,928 - mmseg - INFO - Iter [39500/100000]	lr: 3.217e-04, eta: 3:24:40, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0277, decode.loss_dice: 0.6016, decode.acc_seg: 97.7744, loss: 1.6293
+2024-04-03 19:08:33,952 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:08:33,952 - mmseg - INFO - Iter [40000/100000]	lr: 3.194e-04, eta: 3:22:55, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0284, decode.loss_dice: 0.5906, decode.acc_seg: 97.7054, loss: 1.6190
+2024-04-03 19:09:15,438 - mmseg - INFO - per class results:
+2024-04-03 19:09:15,440 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.22 | 50.58 | 53.86 | 49.46 | 99.23 | 98.87  |   98.36   | 99.38  | 98.58 |
+|   tumor    | 80.73 | 68.07 | 55.29 | 56.62 | 75.56 | 85.17  |   91.01   | 80.45  | 81.46 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 19:09:15,441 - mmseg - INFO - Summary:
+2024-04-03 19:09:15,442 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.31 | 89.47 | 59.33 | 54.58 | 53.04 | 87.39 |  92.02  |   94.68    |  89.91  | 90.02 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 19:09:15,450 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:09:15,451 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9831, mIoU: 0.8947, mVOE: 0.5933, mASD: 0.5458, mMSSD: 0.5304, mAcc: 0.8739, mFscore: 0.9202, mPrecision: 0.9468, mRecall: 0.8991, mDice: 0.9002, IoU.background: 0.9822, IoU.tumor: 0.8073, VOE.background: 0.5058, VOE.tumor: 0.6807, ASD.background: 0.5386, ASD.tumor: 0.5529, MSSD.background: 0.4946, MSSD.tumor: 0.5662, Acc.background: 0.9923, Acc.tumor: 0.7556, Fscore.background: 0.9887, Fscore.tumor: 0.8517, Precision.background: 0.9836, Precision.tumor: 0.9101, Recall.background: 0.9938, Recall.tumor: 0.8045, Dice.background: 0.9858, Dice.tumor: 0.8146
+2024-04-03 19:10:52,681 - mmseg - INFO - Iter [40500/100000]	lr: 3.171e-04, eta: 3:22:08, time: 0.277, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0280, decode.loss_dice: 0.5982, decode.acc_seg: 97.7407, loss: 1.6262
+2024-04-03 19:12:30,179 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:12:30,180 - mmseg - INFO - Iter [41000/100000]	lr: 3.148e-04, eta: 3:20:20, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0279, decode.loss_dice: 0.5906, decode.acc_seg: 97.7553, loss: 1.6185
+2024-04-03 19:14:07,807 - mmseg - INFO - Iter [41500/100000]	lr: 3.124e-04, eta: 3:18:32, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0281, decode.loss_dice: 0.5962, decode.acc_seg: 97.7331, loss: 1.6243
+2024-04-03 19:15:47,490 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:15:47,491 - mmseg - INFO - Iter [42000/100000]	lr: 3.101e-04, eta: 3:16:47, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0282, decode.loss_dice: 0.5944, decode.acc_seg: 97.7205, loss: 1.6226
+2024-04-03 19:17:24,447 - mmseg - INFO - Iter [42500/100000]	lr: 3.078e-04, eta: 3:14:59, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0277, decode.loss_dice: 0.5975, decode.acc_seg: 97.7798, loss: 1.6251
+2024-04-03 19:19:01,368 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:19:01,369 - mmseg - INFO - Iter [43000/100000]	lr: 3.055e-04, eta: 3:13:11, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0278, decode.loss_dice: 0.5935, decode.acc_seg: 97.7653, loss: 1.6213
+2024-04-03 19:20:40,432 - mmseg - INFO - Iter [43500/100000]	lr: 3.031e-04, eta: 3:11:26, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0276, decode.loss_dice: 0.5983, decode.acc_seg: 97.7844, loss: 1.6259
+2024-04-03 19:22:17,574 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:22:17,575 - mmseg - INFO - Iter [44000/100000]	lr: 3.008e-04, eta: 3:09:38, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0281, decode.loss_dice: 0.5962, decode.acc_seg: 97.7409, loss: 1.6243
+2024-04-03 19:23:55,236 - mmseg - INFO - Iter [44500/100000]	lr: 2.984e-04, eta: 3:07:52, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0281, decode.loss_dice: 0.5914, decode.acc_seg: 97.7403, loss: 1.6195
+2024-04-03 19:25:34,928 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:25:34,929 - mmseg - INFO - Iter [45000/100000]	lr: 2.961e-04, eta: 3:06:08, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0280, decode.loss_dice: 0.5921, decode.acc_seg: 97.7456, loss: 1.6201
+2024-04-03 19:26:16,666 - mmseg - INFO - per class results:
+2024-04-03 19:26:16,668 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.23 | 50.57 | 53.85 |  49.4 | 99.07 | 98.87  |    98.5   | 99.25  | 98.59 |
+|   tumor    | 81.28 | 67.52 | 55.16 | 55.94 |  77.7 | 85.68  |    89.8   | 82.16  | 82.11 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 19:26:16,669 - mmseg - INFO - Summary:
+2024-04-03 19:26:16,670 - mmseg - INFO - 
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE | mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+| 98.33 | 89.75 | 59.05 | 54.5 | 52.67 | 88.38 |  92.28  |   94.15    |   90.7  | 90.35 |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+2024-04-03 19:26:16,679 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:26:16,679 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9833, mIoU: 0.8975, mVOE: 0.5905, mASD: 0.5450, mMSSD: 0.5267, mAcc: 0.8838, mFscore: 0.9228, mPrecision: 0.9415, mRecall: 0.9070, mDice: 0.9035, IoU.background: 0.9823, IoU.tumor: 0.8128, VOE.background: 0.5057, VOE.tumor: 0.6752, ASD.background: 0.5385, ASD.tumor: 0.5516, MSSD.background: 0.4940, MSSD.tumor: 0.5594, Acc.background: 0.9907, Acc.tumor: 0.7770, Fscore.background: 0.9887, Fscore.tumor: 0.8568, Precision.background: 0.9850, Precision.tumor: 0.8980, Recall.background: 0.9925, Recall.tumor: 0.8216, Dice.background: 0.9859, Dice.tumor: 0.8211
+2024-04-03 19:27:54,355 - mmseg - INFO - Iter [45500/100000]	lr: 2.938e-04, eta: 3:05:12, time: 0.279, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0276, decode.loss_dice: 0.5944, decode.acc_seg: 97.7881, loss: 1.6221
+2024-04-03 19:29:32,547 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:29:32,547 - mmseg - INFO - Iter [46000/100000]	lr: 2.914e-04, eta: 3:03:26, time: 0.196, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0276, decode.loss_dice: 0.5957, decode.acc_seg: 97.7905, loss: 1.6233
+2024-04-03 19:31:12,136 - mmseg - INFO - Iter [46500/100000]	lr: 2.891e-04, eta: 3:01:41, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0274, decode.loss_dice: 0.5970, decode.acc_seg: 97.8059, loss: 1.6244
+2024-04-03 19:32:49,419 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:32:49,420 - mmseg - INFO - Iter [47000/100000]	lr: 2.867e-04, eta: 2:59:54, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0279, decode.loss_dice: 0.5913, decode.acc_seg: 97.7583, loss: 1.6192
+2024-04-03 19:34:26,812 - mmseg - INFO - Iter [47500/100000]	lr: 2.844e-04, eta: 2:58:07, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0275, decode.loss_dice: 0.5959, decode.acc_seg: 97.7985, loss: 1.6233
+2024-04-03 19:36:06,199 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:36:06,200 - mmseg - INFO - Iter [48000/100000]	lr: 2.820e-04, eta: 2:56:23, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0276, decode.loss_dice: 0.5963, decode.acc_seg: 97.7829, loss: 1.6239
+2024-04-03 19:37:43,010 - mmseg - INFO - Iter [48500/100000]	lr: 2.797e-04, eta: 2:54:36, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0275, decode.loss_dice: 0.5937, decode.acc_seg: 97.7949, loss: 1.6212
+2024-04-03 19:39:20,360 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:39:20,361 - mmseg - INFO - Iter [49000/100000]	lr: 2.773e-04, eta: 2:52:50, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0277, decode.loss_dice: 0.5917, decode.acc_seg: 97.7776, loss: 1.6194
+2024-04-03 19:40:59,628 - mmseg - INFO - Iter [49500/100000]	lr: 2.750e-04, eta: 2:51:05, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0276, decode.loss_dice: 0.5927, decode.acc_seg: 97.7911, loss: 1.6203
+2024-04-03 19:42:36,907 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:42:36,908 - mmseg - INFO - Iter [50000/100000]	lr: 2.726e-04, eta: 2:49:19, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0276, decode.loss_dice: 0.5912, decode.acc_seg: 97.7846, loss: 1.6188
+2024-04-03 19:43:18,790 - mmseg - INFO - per class results:
+2024-04-03 19:43:18,792 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.28 | 50.52 | 53.85 |  49.4 | 99.14 | 98.91  |    98.5   | 99.31  | 98.63 |
+|   tumor    | 81.64 | 67.16 | 55.15 | 55.92 | 77.76 | 86.02  |   90.52   | 82.21  | 82.53 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 19:43:18,793 - mmseg - INFO - Summary:
+2024-04-03 19:43:18,794 - mmseg - INFO - 
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE | mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+| 98.38 | 89.96 | 58.84 | 54.5 | 52.66 | 88.45 |  92.46  |   94.51    |  90.76  | 90.58 |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+2024-04-03 19:43:18,803 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:43:18,803 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9838, mIoU: 0.8996, mVOE: 0.5884, mASD: 0.5450, mMSSD: 0.5266, mAcc: 0.8845, mFscore: 0.9246, mPrecision: 0.9451, mRecall: 0.9076, mDice: 0.9058, IoU.background: 0.9828, IoU.tumor: 0.8164, VOE.background: 0.5052, VOE.tumor: 0.6716, ASD.background: 0.5385, ASD.tumor: 0.5515, MSSD.background: 0.4940, MSSD.tumor: 0.5592, Acc.background: 0.9914, Acc.tumor: 0.7776, Fscore.background: 0.9891, Fscore.tumor: 0.8602, Precision.background: 0.9850, Precision.tumor: 0.9052, Recall.background: 0.9931, Recall.tumor: 0.8221, Dice.background: 0.9863, Dice.tumor: 0.8253
+2024-04-03 19:44:56,535 - mmseg - INFO - Iter [50500/100000]	lr: 2.702e-04, eta: 2:48:15, time: 0.279, data_time: 0.086, memory: 2625, decode.loss_bce: 1.0273, decode.loss_dice: 0.5960, decode.acc_seg: 97.8191, loss: 1.6233
+2024-04-03 19:46:36,573 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:46:36,574 - mmseg - INFO - Iter [51000/100000]	lr: 2.679e-04, eta: 2:46:31, time: 0.200, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0273, decode.loss_dice: 0.5984, decode.acc_seg: 97.8167, loss: 1.6257
+2024-04-03 19:48:14,332 - mmseg - INFO - Iter [51500/100000]	lr: 2.655e-04, eta: 2:44:45, time: 0.196, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0271, decode.loss_dice: 0.5933, decode.acc_seg: 97.8422, loss: 1.6204
+2024-04-03 19:49:52,538 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:49:52,539 - mmseg - INFO - Iter [52000/100000]	lr: 2.631e-04, eta: 2:43:00, time: 0.196, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0280, decode.loss_dice: 0.5919, decode.acc_seg: 97.7487, loss: 1.6198
+2024-04-03 19:51:32,498 - mmseg - INFO - Iter [52500/100000]	lr: 2.607e-04, eta: 2:41:16, time: 0.200, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0271, decode.loss_dice: 0.5959, decode.acc_seg: 97.8334, loss: 1.6230
+2024-04-03 19:53:10,040 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:53:10,041 - mmseg - INFO - Iter [53000/100000]	lr: 2.584e-04, eta: 2:39:31, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0274, decode.loss_dice: 0.5903, decode.acc_seg: 97.8102, loss: 1.6177
+2024-04-03 19:54:46,976 - mmseg - INFO - Iter [53500/100000]	lr: 2.560e-04, eta: 2:37:45, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0273, decode.loss_dice: 0.5952, decode.acc_seg: 97.8179, loss: 1.6225
+2024-04-03 19:56:26,200 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:56:26,201 - mmseg - INFO - Iter [54000/100000]	lr: 2.536e-04, eta: 2:36:01, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0273, decode.loss_dice: 0.5947, decode.acc_seg: 97.8235, loss: 1.6219
+2024-04-03 19:58:03,056 - mmseg - INFO - Iter [54500/100000]	lr: 2.512e-04, eta: 2:34:15, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0272, decode.loss_dice: 0.5942, decode.acc_seg: 97.8264, loss: 1.6214
+2024-04-03 19:59:39,781 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 19:59:39,782 - mmseg - INFO - Iter [55000/100000]	lr: 2.488e-04, eta: 2:32:29, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0272, decode.loss_dice: 0.5935, decode.acc_seg: 97.8264, loss: 1.6207
+2024-04-03 20:00:21,421 - mmseg - INFO - per class results:
+2024-04-03 20:00:21,423 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.25 | 50.55 | 53.86 | 49.44 | 99.22 | 98.89  |   98.41   | 99.38  | 98.61 |
+|   tumor    | 81.15 | 67.65 | 55.25 | 56.39 |  76.3 | 85.56  |    91.1   | 81.04  | 81.95 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 20:00:21,424 - mmseg - INFO - Summary:
+2024-04-03 20:00:21,424 - mmseg - INFO - 
++-------+------+------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc | mIoU | mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+------+------+-------+-------+-------+---------+------------+---------+-------+
+| 98.35 | 89.7 | 59.1 | 54.55 | 52.91 | 87.76 |  92.23  |   94.75    |  90.21  | 90.28 |
++-------+------+------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 20:00:21,433 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:00:21,433 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9835, mIoU: 0.8970, mVOE: 0.5910, mASD: 0.5455, mMSSD: 0.5291, mAcc: 0.8776, mFscore: 0.9223, mPrecision: 0.9475, mRecall: 0.9021, mDice: 0.9028, IoU.background: 0.9825, IoU.tumor: 0.8115, VOE.background: 0.5055, VOE.tumor: 0.6765, ASD.background: 0.5386, ASD.tumor: 0.5525, MSSD.background: 0.4944, MSSD.tumor: 0.5639, Acc.background: 0.9922, Acc.tumor: 0.7630, Fscore.background: 0.9889, Fscore.tumor: 0.8556, Precision.background: 0.9841, Precision.tumor: 0.9110, Recall.background: 0.9938, Recall.tumor: 0.8104, Dice.background: 0.9861, Dice.tumor: 0.8195
+2024-04-03 20:02:01,652 - mmseg - INFO - Iter [55500/100000]	lr: 2.464e-04, eta: 2:31:20, time: 0.284, data_time: 0.089, memory: 2625, decode.loss_bce: 1.0274, decode.loss_dice: 0.5914, decode.acc_seg: 97.8036, loss: 1.6188
+2024-04-03 20:03:41,490 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:03:41,490 - mmseg - INFO - Iter [56000/100000]	lr: 2.441e-04, eta: 2:29:36, time: 0.200, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0274, decode.loss_dice: 0.5926, decode.acc_seg: 97.8024, loss: 1.6200
+2024-04-03 20:05:19,758 - mmseg - INFO - Iter [56500/100000]	lr: 2.417e-04, eta: 2:27:51, time: 0.197, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5954, decode.acc_seg: 97.8810, loss: 1.6221
+2024-04-03 20:06:59,287 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:06:59,288 - mmseg - INFO - Iter [57000/100000]	lr: 2.393e-04, eta: 2:26:07, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0271, decode.loss_dice: 0.5916, decode.acc_seg: 97.8378, loss: 1.6187
+2024-04-03 20:08:37,810 - mmseg - INFO - Iter [57500/100000]	lr: 2.369e-04, eta: 2:24:23, time: 0.197, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0270, decode.loss_dice: 0.5926, decode.acc_seg: 97.8504, loss: 1.6196
+2024-04-03 20:10:17,079 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:10:17,080 - mmseg - INFO - Iter [58000/100000]	lr: 2.345e-04, eta: 2:22:39, time: 0.199, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0272, decode.loss_dice: 0.5923, decode.acc_seg: 97.8310, loss: 1.6195
+2024-04-03 20:11:58,149 - mmseg - INFO - Iter [58500/100000]	lr: 2.320e-04, eta: 2:20:56, time: 0.202, data_time: 0.007, memory: 2625, decode.loss_bce: 1.0269, decode.loss_dice: 0.5939, decode.acc_seg: 97.8564, loss: 1.6208
+2024-04-03 20:13:36,434 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:13:36,435 - mmseg - INFO - Iter [59000/100000]	lr: 2.296e-04, eta: 2:19:12, time: 0.197, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5934, decode.acc_seg: 97.8788, loss: 1.6201
+2024-04-03 20:15:14,177 - mmseg - INFO - Iter [59500/100000]	lr: 2.272e-04, eta: 2:17:27, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0268, decode.loss_dice: 0.5938, decode.acc_seg: 97.8663, loss: 1.6206
+2024-04-03 20:16:54,885 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:16:54,886 - mmseg - INFO - Iter [60000/100000]	lr: 2.248e-04, eta: 2:15:45, time: 0.201, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0271, decode.loss_dice: 0.5925, decode.acc_seg: 97.8365, loss: 1.6196
+2024-04-03 20:17:36,693 - mmseg - INFO - per class results:
+2024-04-03 20:17:36,695 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.28 | 50.52 | 53.85 |  49.4 | 99.14 |  98.9  |    98.5   | 99.31  | 98.63 |
+|   tumor    | 81.62 | 67.18 | 55.16 | 55.92 | 77.74 |  86.0  |   90.49   | 82.19  |  82.5 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 20:17:36,696 - mmseg - INFO - Summary:
+2024-04-03 20:17:36,696 - mmseg - INFO - 
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE | mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+| 98.37 | 89.95 | 58.85 | 54.5 | 52.66 | 88.44 |  92.45  |    94.5    |  90.75  | 90.56 |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+2024-04-03 20:17:36,704 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:17:36,704 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9837, mIoU: 0.8995, mVOE: 0.5885, mASD: 0.5450, mMSSD: 0.5266, mAcc: 0.8844, mFscore: 0.9245, mPrecision: 0.9450, mRecall: 0.9075, mDice: 0.9056, IoU.background: 0.9828, IoU.tumor: 0.8162, VOE.background: 0.5052, VOE.tumor: 0.6718, ASD.background: 0.5385, ASD.tumor: 0.5516, MSSD.background: 0.4940, MSSD.tumor: 0.5592, Acc.background: 0.9914, Acc.tumor: 0.7774, Fscore.background: 0.9890, Fscore.tumor: 0.8600, Precision.background: 0.9850, Precision.tumor: 0.9049, Recall.background: 0.9931, Recall.tumor: 0.8219, Dice.background: 0.9863, Dice.tumor: 0.8250
+2024-04-03 20:19:15,208 - mmseg - INFO - Iter [60500/100000]	lr: 2.224e-04, eta: 2:14:28, time: 0.281, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0269, decode.loss_dice: 0.5925, decode.acc_seg: 97.8604, loss: 1.6194
+2024-04-03 20:20:53,848 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:20:53,849 - mmseg - INFO - Iter [61000/100000]	lr: 2.200e-04, eta: 2:12:44, time: 0.197, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5942, decode.acc_seg: 97.8753, loss: 1.6209
+2024-04-03 20:22:32,231 - mmseg - INFO - Iter [61500/100000]	lr: 2.175e-04, eta: 2:10:59, time: 0.197, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0270, decode.loss_dice: 0.5908, decode.acc_seg: 97.8451, loss: 1.6179
+2024-04-03 20:24:11,687 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:24:11,688 - mmseg - INFO - Iter [62000/100000]	lr: 2.151e-04, eta: 2:09:16, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0269, decode.loss_dice: 0.5906, decode.acc_seg: 97.8628, loss: 1.6175
+2024-04-03 20:25:49,690 - mmseg - INFO - Iter [62500/100000]	lr: 2.127e-04, eta: 2:07:31, time: 0.196, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0268, decode.loss_dice: 0.5957, decode.acc_seg: 97.8733, loss: 1.6224
+2024-04-03 20:27:28,024 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:27:28,025 - mmseg - INFO - Iter [63000/100000]	lr: 2.103e-04, eta: 2:05:47, time: 0.197, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0266, decode.loss_dice: 0.5916, decode.acc_seg: 97.8904, loss: 1.6182
+2024-04-03 20:29:06,817 - mmseg - INFO - Iter [63500/100000]	lr: 2.078e-04, eta: 2:04:03, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0268, decode.loss_dice: 0.5947, decode.acc_seg: 97.8687, loss: 1.6215
+2024-04-03 20:30:43,578 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:30:43,578 - mmseg - INFO - Iter [64000/100000]	lr: 2.054e-04, eta: 2:02:18, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0268, decode.loss_dice: 0.5896, decode.acc_seg: 97.8703, loss: 1.6164
+2024-04-03 20:32:20,401 - mmseg - INFO - Iter [64500/100000]	lr: 2.029e-04, eta: 2:00:33, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0266, decode.loss_dice: 0.5924, decode.acc_seg: 97.8899, loss: 1.6191
+2024-04-03 20:33:59,019 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:33:59,020 - mmseg - INFO - Iter [65000/100000]	lr: 2.005e-04, eta: 1:58:50, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0269, decode.loss_dice: 0.5915, decode.acc_seg: 97.8648, loss: 1.6184
+2024-04-03 20:34:40,736 - mmseg - INFO - per class results:
+2024-04-03 20:34:40,738 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.24 | 50.56 | 53.86 | 49.43 | 99.18 | 98.88  |   98.42   | 99.35  |  98.6 |
+|   tumor    | 81.14 | 67.66 | 55.23 |  56.3 | 76.57 | 85.55  |   90.75   | 81.26  | 81.94 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 20:34:40,739 - mmseg - INFO - Summary:
+2024-04-03 20:34:40,740 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.34 | 89.69 | 59.11 | 54.54 | 52.86 | 87.88 |  92.22  |   94.59    |   90.3  | 90.27 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 20:34:40,749 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:34:40,749 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9834, mIoU: 0.8969, mVOE: 0.5911, mASD: 0.5454, mMSSD: 0.5286, mAcc: 0.8788, mFscore: 0.9222, mPrecision: 0.9459, mRecall: 0.9030, mDice: 0.9027, IoU.background: 0.9824, IoU.tumor: 0.8114, VOE.background: 0.5056, VOE.tumor: 0.6766, ASD.background: 0.5386, ASD.tumor: 0.5523, MSSD.background: 0.4943, MSSD.tumor: 0.5630, Acc.background: 0.9918, Acc.tumor: 0.7657, Fscore.background: 0.9888, Fscore.tumor: 0.8555, Precision.background: 0.9842, Precision.tumor: 0.9075, Recall.background: 0.9935, Recall.tumor: 0.8126, Dice.background: 0.9860, Dice.tumor: 0.8194
+2024-04-03 20:36:17,886 - mmseg - INFO - Iter [65500/100000]	lr: 1.980e-04, eta: 1:57:27, time: 0.278, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0268, decode.loss_dice: 0.5923, decode.acc_seg: 97.8714, loss: 1.6191
+2024-04-03 20:37:55,267 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:37:55,268 - mmseg - INFO - Iter [66000/100000]	lr: 1.956e-04, eta: 1:55:43, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5912, decode.acc_seg: 97.8814, loss: 1.6179
+2024-04-03 20:39:34,228 - mmseg - INFO - Iter [66500/100000]	lr: 1.931e-04, eta: 1:53:59, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0268, decode.loss_dice: 0.5901, decode.acc_seg: 97.8726, loss: 1.6169
+2024-04-03 20:41:10,985 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:41:10,986 - mmseg - INFO - Iter [67000/100000]	lr: 1.907e-04, eta: 1:52:14, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0264, decode.loss_dice: 0.5960, decode.acc_seg: 97.9149, loss: 1.6224
+2024-04-03 20:42:47,596 - mmseg - INFO - Iter [67500/100000]	lr: 1.882e-04, eta: 1:50:30, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0269, decode.loss_dice: 0.5883, decode.acc_seg: 97.8636, loss: 1.6152
+2024-04-03 20:44:26,196 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:44:26,197 - mmseg - INFO - Iter [68000/100000]	lr: 1.857e-04, eta: 1:48:46, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0262, decode.loss_dice: 0.5919, decode.acc_seg: 97.9327, loss: 1.6181
+2024-04-03 20:46:02,814 - mmseg - INFO - Iter [68500/100000]	lr: 1.833e-04, eta: 1:47:02, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0266, decode.loss_dice: 0.5942, decode.acc_seg: 97.8880, loss: 1.6208
+2024-04-03 20:47:39,369 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:47:39,370 - mmseg - INFO - Iter [69000/100000]	lr: 1.808e-04, eta: 1:45:17, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5897, decode.acc_seg: 97.8827, loss: 1.6164
+2024-04-03 20:49:17,930 - mmseg - INFO - Iter [69500/100000]	lr: 1.783e-04, eta: 1:43:34, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0266, decode.loss_dice: 0.5885, decode.acc_seg: 97.8908, loss: 1.6151
+2024-04-03 20:50:54,493 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:50:54,494 - mmseg - INFO - Iter [70000/100000]	lr: 1.758e-04, eta: 1:41:50, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0263, decode.loss_dice: 0.5955, decode.acc_seg: 97.9194, loss: 1.6219
+2024-04-03 20:51:36,058 - mmseg - INFO - per class results:
+2024-04-03 20:51:36,060 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.35 | 50.45 | 53.83 | 49.31 | 98.98 | 98.95  |   98.72   | 99.18  | 98.69 |
+|   tumor    | 82.84 | 65.96 | 54.94 | 54.83 | 81.15 | 87.12  |   89.52   | 84.92  |  83.9 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 20:51:36,061 - mmseg - INFO - Summary:
+2024-04-03 20:51:36,062 - mmseg - INFO - 
++-------+------+------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc | mIoU | mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+------+------+-------+-------+-------+---------+------------+---------+-------+
+| 98.45 | 90.6 | 58.2 | 54.38 | 52.07 | 90.07 |  93.03  |   94.12    |  92.05  | 91.29 |
++-------+------+------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 20:51:36,071 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:51:36,071 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9845, mIoU: 0.9060, mVOE: 0.5820, mASD: 0.5438, mMSSD: 0.5207, mAcc: 0.9007, mFscore: 0.9303, mPrecision: 0.9412, mRecall: 0.9205, mDice: 0.9129, IoU.background: 0.9835, IoU.tumor: 0.8284, VOE.background: 0.5045, VOE.tumor: 0.6596, ASD.background: 0.5383, ASD.tumor: 0.5494, MSSD.background: 0.4931, MSSD.tumor: 0.5483, Acc.background: 0.9898, Acc.tumor: 0.8115, Fscore.background: 0.9895, Fscore.tumor: 0.8712, Precision.background: 0.9872, Precision.tumor: 0.8952, Recall.background: 0.9918, Recall.tumor: 0.8492, Dice.background: 0.9869, Dice.tumor: 0.8390
+2024-04-03 20:53:13,674 - mmseg - INFO - Iter [70500/100000]	lr: 1.733e-04, eta: 1:40:24, time: 0.278, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0265, decode.loss_dice: 0.5914, decode.acc_seg: 97.9071, loss: 1.6179
+2024-04-03 20:54:53,041 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:54:53,041 - mmseg - INFO - Iter [71000/100000]	lr: 1.708e-04, eta: 1:38:40, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0265, decode.loss_dice: 0.5906, decode.acc_seg: 97.9016, loss: 1.6171
+2024-04-03 20:56:30,184 - mmseg - INFO - Iter [71500/100000]	lr: 1.683e-04, eta: 1:36:56, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0264, decode.loss_dice: 0.5907, decode.acc_seg: 97.9069, loss: 1.6172
+2024-04-03 20:58:07,133 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 20:58:07,134 - mmseg - INFO - Iter [72000/100000]	lr: 1.658e-04, eta: 1:35:12, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0266, decode.loss_dice: 0.5893, decode.acc_seg: 97.8873, loss: 1.6159
+2024-04-03 20:59:45,909 - mmseg - INFO - Iter [72500/100000]	lr: 1.633e-04, eta: 1:33:29, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0261, decode.loss_dice: 0.5925, decode.acc_seg: 97.9416, loss: 1.6187
+2024-04-03 21:01:22,575 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:01:22,576 - mmseg - INFO - Iter [73000/100000]	lr: 1.608e-04, eta: 1:31:45, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0261, decode.loss_dice: 0.5926, decode.acc_seg: 97.9433, loss: 1.6187
+2024-04-03 21:02:59,239 - mmseg - INFO - Iter [73500/100000]	lr: 1.583e-04, eta: 1:30:01, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5905, decode.acc_seg: 97.8835, loss: 1.6172
+2024-04-03 21:04:37,843 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:04:37,843 - mmseg - INFO - Iter [74000/100000]	lr: 1.558e-04, eta: 1:28:18, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0262, decode.loss_dice: 0.5940, decode.acc_seg: 97.9293, loss: 1.6203
+2024-04-03 21:06:14,426 - mmseg - INFO - Iter [74500/100000]	lr: 1.533e-04, eta: 1:26:34, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5909, decode.acc_seg: 97.9676, loss: 1.6167
+2024-04-03 21:07:51,044 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:07:51,045 - mmseg - INFO - Iter [75000/100000]	lr: 1.507e-04, eta: 1:24:51, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0263, decode.loss_dice: 0.5938, decode.acc_seg: 97.9203, loss: 1.6202
+2024-04-03 21:08:32,533 - mmseg - INFO - per class results:
+2024-04-03 21:08:32,534 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.28 | 50.52 | 53.85 | 49.37 | 99.06 | 98.91  |   98.56   | 99.25  | 98.63 |
+|   tumor    | 81.85 | 66.95 | 55.09 | 55.61 | 78.72 | 86.21  |   89.92   | 82.98  | 82.76 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 21:08:32,535 - mmseg - INFO - Summary:
+2024-04-03 21:08:32,536 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.38 | 90.06 | 58.74 | 54.47 | 52.49 | 88.89 |  92.56  |   94.24    |  91.11  |  90.7 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 21:08:32,545 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:08:32,545 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9838, mIoU: 0.9006, mVOE: 0.5874, mASD: 0.5447, mMSSD: 0.5249, mAcc: 0.8889, mFscore: 0.9256, mPrecision: 0.9424, mRecall: 0.9111, mDice: 0.9070, IoU.background: 0.9828, IoU.tumor: 0.8185, VOE.background: 0.5052, VOE.tumor: 0.6695, ASD.background: 0.5385, ASD.tumor: 0.5509, MSSD.background: 0.4937, MSSD.tumor: 0.5561, Acc.background: 0.9906, Acc.tumor: 0.7872, Fscore.background: 0.9891, Fscore.tumor: 0.8621, Precision.background: 0.9856, Precision.tumor: 0.8992, Recall.background: 0.9925, Recall.tumor: 0.8298, Dice.background: 0.9863, Dice.tumor: 0.8276
+2024-04-03 21:10:11,573 - mmseg - INFO - Iter [75500/100000]	lr: 1.482e-04, eta: 1:23:22, time: 0.281, data_time: 0.089, memory: 2625, decode.loss_bce: 1.0267, decode.loss_dice: 0.5854, decode.acc_seg: 97.8802, loss: 1.6121
+2024-04-03 21:11:49,025 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:11:49,026 - mmseg - INFO - Iter [76000/100000]	lr: 1.456e-04, eta: 1:21:38, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0261, decode.loss_dice: 0.5910, decode.acc_seg: 97.9417, loss: 1.6171
+2024-04-03 21:13:26,134 - mmseg - INFO - Iter [76500/100000]	lr: 1.431e-04, eta: 1:19:54, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0263, decode.loss_dice: 0.5907, decode.acc_seg: 97.9226, loss: 1.6170
+2024-04-03 21:15:05,013 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:15:05,014 - mmseg - INFO - Iter [77000/100000]	lr: 1.405e-04, eta: 1:18:11, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0262, decode.loss_dice: 0.5898, decode.acc_seg: 97.9368, loss: 1.6160
+2024-04-03 21:16:41,797 - mmseg - INFO - Iter [77500/100000]	lr: 1.380e-04, eta: 1:16:28, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0262, decode.loss_dice: 0.5890, decode.acc_seg: 97.9289, loss: 1.6152
+2024-04-03 21:18:18,654 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:18:18,654 - mmseg - INFO - Iter [78000/100000]	lr: 1.354e-04, eta: 1:14:45, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0261, decode.loss_dice: 0.5910, decode.acc_seg: 97.9421, loss: 1.6172
+2024-04-03 21:19:57,556 - mmseg - INFO - Iter [78500/100000]	lr: 1.329e-04, eta: 1:13:02, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5931, decode.acc_seg: 97.9619, loss: 1.6190
+2024-04-03 21:21:34,632 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:21:34,633 - mmseg - INFO - Iter [79000/100000]	lr: 1.303e-04, eta: 1:11:19, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0261, decode.loss_dice: 0.5875, decode.acc_seg: 97.9421, loss: 1.6136
+2024-04-03 21:23:11,518 - mmseg - INFO - Iter [79500/100000]	lr: 1.277e-04, eta: 1:09:35, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0261, decode.loss_dice: 0.5908, decode.acc_seg: 97.9477, loss: 1.6169
+2024-04-03 21:24:50,537 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:24:50,538 - mmseg - INFO - Iter [80000/100000]	lr: 1.251e-04, eta: 1:07:53, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0258, decode.loss_dice: 0.5930, decode.acc_seg: 97.9780, loss: 1.6187
+2024-04-03 21:25:31,593 - mmseg - INFO - per class results:
+2024-04-03 21:25:31,595 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.29 | 50.51 | 53.85 |  49.4 | 99.16 | 98.91  |    98.5   | 99.33  | 98.64 |
+|   tumor    | 81.73 | 67.07 | 55.15 | 55.91 | 77.77 |  86.1  |    90.7   | 82.21  | 82.63 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 21:25:31,596 - mmseg - INFO - Summary:
+2024-04-03 21:25:31,597 - mmseg - INFO - 
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE | mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+| 98.39 | 90.01 | 58.79 | 54.5 | 52.66 | 88.46 |  92.51  |    94.6    |  90.77  | 90.63 |
++-------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+2024-04-03 21:25:31,605 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:25:31,605 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9839, mIoU: 0.9001, mVOE: 0.5879, mASD: 0.5450, mMSSD: 0.5266, mAcc: 0.8846, mFscore: 0.9251, mPrecision: 0.9460, mRecall: 0.9077, mDice: 0.9063, IoU.background: 0.9829, IoU.tumor: 0.8173, VOE.background: 0.5051, VOE.tumor: 0.6707, ASD.background: 0.5385, ASD.tumor: 0.5515, MSSD.background: 0.4940, MSSD.tumor: 0.5591, Acc.background: 0.9916, Acc.tumor: 0.7777, Fscore.background: 0.9891, Fscore.tumor: 0.8610, Precision.background: 0.9850, Precision.tumor: 0.9070, Recall.background: 0.9933, Recall.tumor: 0.8221, Dice.background: 0.9864, Dice.tumor: 0.8263
+2024-04-03 21:27:09,315 - mmseg - INFO - Iter [80500/100000]	lr: 1.225e-04, eta: 1:06:20, time: 0.278, data_time: 0.084, memory: 2625, decode.loss_bce: 1.0260, decode.loss_dice: 0.5907, decode.acc_seg: 97.9551, loss: 1.6166
+2024-04-03 21:28:46,734 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:28:46,735 - mmseg - INFO - Iter [81000/100000]	lr: 1.199e-04, eta: 1:04:37, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0263, decode.loss_dice: 0.5888, decode.acc_seg: 97.9271, loss: 1.6151
+2024-04-03 21:30:23,800 - mmseg - INFO - Iter [81500/100000]	lr: 1.173e-04, eta: 1:02:54, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5911, decode.acc_seg: 97.9670, loss: 1.6170
+2024-04-03 21:32:02,653 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:32:02,653 - mmseg - INFO - Iter [82000/100000]	lr: 1.147e-04, eta: 1:01:11, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0260, decode.loss_dice: 0.5876, decode.acc_seg: 97.9520, loss: 1.6137
+2024-04-03 21:33:39,457 - mmseg - INFO - Iter [82500/100000]	lr: 1.121e-04, eta: 0:59:28, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0260, decode.loss_dice: 0.5893, decode.acc_seg: 97.9494, loss: 1.6154
+2024-04-03 21:35:16,124 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:35:16,125 - mmseg - INFO - Iter [83000/100000]	lr: 1.095e-04, eta: 0:57:45, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5925, decode.acc_seg: 97.9594, loss: 1.6184
+2024-04-03 21:36:54,726 - mmseg - INFO - Iter [83500/100000]	lr: 1.068e-04, eta: 0:56:02, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0256, decode.loss_dice: 0.5954, decode.acc_seg: 98.0013, loss: 1.6209
+2024-04-03 21:38:31,485 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:38:31,485 - mmseg - INFO - Iter [84000/100000]	lr: 1.042e-04, eta: 0:54:19, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0260, decode.loss_dice: 0.5869, decode.acc_seg: 97.9586, loss: 1.6129
+2024-04-03 21:40:08,237 - mmseg - INFO - Iter [84500/100000]	lr: 1.015e-04, eta: 0:52:37, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0260, decode.loss_dice: 0.5905, decode.acc_seg: 97.9572, loss: 1.6164
+2024-04-03 21:41:47,419 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:41:47,420 - mmseg - INFO - Iter [85000/100000]	lr: 9.886e-05, eta: 0:50:54, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5906, decode.acc_seg: 97.9896, loss: 1.6163
+2024-04-03 21:42:28,955 - mmseg - INFO - per class results:
+2024-04-03 21:42:28,957 - mmseg - INFO - 
++------------+-------+-------+-------+------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  | MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+------+-------+--------+-----------+--------+-------+
+| background | 98.31 | 50.49 | 53.85 | 49.4 | 99.18 | 98.92  |   98.51   | 99.35  | 98.65 |
+|   tumor    | 81.85 | 66.95 | 55.15 | 55.9 | 77.82 | 86.21  |    90.9   | 82.25  | 82.76 |
++------------+-------+-------+-------+------+-------+--------+-----------+--------+-------+
+2024-04-03 21:42:28,958 - mmseg - INFO - Summary:
+2024-04-03 21:42:28,959 - mmseg - INFO - 
++------+-------+-------+------+-------+------+---------+------------+---------+-------+
+| aAcc |  mIoU |  mVOE | mASD | mMSSD | mAcc | mFscore | mPrecision | mRecall | mDice |
++------+-------+-------+------+-------+------+---------+------------+---------+-------+
+| 98.4 | 90.08 | 58.72 | 54.5 | 52.65 | 88.5 |  92.57  |   94.71    |   90.8  | 90.71 |
++------+-------+-------+------+-------+------+---------+------------+---------+-------+
+2024-04-03 21:42:28,968 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:42:28,969 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9840, mIoU: 0.9008, mVOE: 0.5872, mASD: 0.5450, mMSSD: 0.5265, mAcc: 0.8850, mFscore: 0.9257, mPrecision: 0.9471, mRecall: 0.9080, mDice: 0.9071, IoU.background: 0.9831, IoU.tumor: 0.8185, VOE.background: 0.5049, VOE.tumor: 0.6695, ASD.background: 0.5385, ASD.tumor: 0.5515, MSSD.background: 0.4940, MSSD.tumor: 0.5590, Acc.background: 0.9918, Acc.tumor: 0.7782, Fscore.background: 0.9892, Fscore.tumor: 0.8621, Precision.background: 0.9851, Precision.tumor: 0.9090, Recall.background: 0.9935, Recall.tumor: 0.8225, Dice.background: 0.9865, Dice.tumor: 0.8276
+2024-04-03 21:44:06,323 - mmseg - INFO - Iter [85500/100000]	lr: 9.619e-05, eta: 0:49:19, time: 0.278, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5899, decode.acc_seg: 97.9700, loss: 1.6158
+2024-04-03 21:45:43,807 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:45:43,808 - mmseg - INFO - Iter [86000/100000]	lr: 9.351e-05, eta: 0:47:36, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5917, decode.acc_seg: 97.9626, loss: 1.6176
+2024-04-03 21:47:22,888 - mmseg - INFO - Iter [86500/100000]	lr: 9.082e-05, eta: 0:45:53, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5859, decode.acc_seg: 97.9659, loss: 1.6118
+2024-04-03 21:48:59,672 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:48:59,673 - mmseg - INFO - Iter [87000/100000]	lr: 8.812e-05, eta: 0:44:11, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5908, decode.acc_seg: 97.9870, loss: 1.6165
+2024-04-03 21:50:36,446 - mmseg - INFO - Iter [87500/100000]	lr: 8.541e-05, eta: 0:42:28, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0260, decode.loss_dice: 0.5885, decode.acc_seg: 97.9555, loss: 1.6145
+2024-04-03 21:52:15,110 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:52:15,111 - mmseg - INFO - Iter [88000/100000]	lr: 8.269e-05, eta: 0:40:46, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5888, decode.acc_seg: 97.9652, loss: 1.6147
+2024-04-03 21:53:51,791 - mmseg - INFO - Iter [88500/100000]	lr: 7.996e-05, eta: 0:39:03, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0256, decode.loss_dice: 0.5883, decode.acc_seg: 97.9953, loss: 1.6139
+2024-04-03 21:55:28,494 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:55:28,495 - mmseg - INFO - Iter [89000/100000]	lr: 7.722e-05, eta: 0:37:20, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5921, decode.acc_seg: 97.9899, loss: 1.6177
+2024-04-03 21:57:07,147 - mmseg - INFO - Iter [89500/100000]	lr: 7.446e-05, eta: 0:35:38, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5911, decode.acc_seg: 97.9888, loss: 1.6168
+2024-04-03 21:58:43,813 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:58:43,813 - mmseg - INFO - Iter [90000/100000]	lr: 7.169e-05, eta: 0:33:56, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5875, decode.acc_seg: 97.9852, loss: 1.6132
+2024-04-03 21:59:25,587 - mmseg - INFO - per class results:
+2024-04-03 21:59:25,588 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background |  98.3 |  50.5 | 53.85 | 49.39 | 99.14 | 98.92  |   98.53   | 99.31  | 98.65 |
+|   tumor    | 81.87 | 66.93 | 55.13 | 55.78 |  78.2 | 86.23  |   90.53   | 82.56  | 82.79 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 21:59:25,589 - mmseg - INFO - Summary:
+2024-04-03 21:59:25,590 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.39 | 90.08 | 58.72 | 54.49 | 52.58 | 88.67 |  92.57  |   94.53    |  90.93  | 90.72 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 21:59:25,599 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 21:59:25,600 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9839, mIoU: 0.9008, mVOE: 0.5872, mASD: 0.5449, mMSSD: 0.5258, mAcc: 0.8867, mFscore: 0.9257, mPrecision: 0.9453, mRecall: 0.9093, mDice: 0.9072, IoU.background: 0.9830, IoU.tumor: 0.8187, VOE.background: 0.5050, VOE.tumor: 0.6693, ASD.background: 0.5385, ASD.tumor: 0.5513, MSSD.background: 0.4939, MSSD.tumor: 0.5578, Acc.background: 0.9914, Acc.tumor: 0.7820, Fscore.background: 0.9892, Fscore.tumor: 0.8623, Precision.background: 0.9853, Precision.tumor: 0.9053, Recall.background: 0.9931, Recall.tumor: 0.8256, Dice.background: 0.9865, Dice.tumor: 0.8279
+2024-04-03 22:01:02,633 - mmseg - INFO - Iter [90500/100000]	lr: 6.891e-05, eta: 0:32:18, time: 0.278, data_time: 0.085, memory: 2625, decode.loss_bce: 1.0256, decode.loss_dice: 0.5890, decode.acc_seg: 97.9944, loss: 1.6146
+2024-04-03 22:02:41,895 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:02:41,896 - mmseg - INFO - Iter [91000/100000]	lr: 6.611e-05, eta: 0:30:36, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5907, decode.acc_seg: 97.9891, loss: 1.6163
+2024-04-03 22:04:19,005 - mmseg - INFO - Iter [91500/100000]	lr: 6.330e-05, eta: 0:28:53, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5902, decode.acc_seg: 97.9824, loss: 1.6159
+2024-04-03 22:05:55,993 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:05:55,994 - mmseg - INFO - Iter [92000/100000]	lr: 6.047e-05, eta: 0:27:11, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5871, decode.acc_seg: 97.9843, loss: 1.6128
+2024-04-03 22:07:34,987 - mmseg - INFO - Iter [92500/100000]	lr: 5.762e-05, eta: 0:25:29, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0255, decode.loss_dice: 0.5877, decode.acc_seg: 98.0012, loss: 1.6133
+2024-04-03 22:09:11,884 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:09:11,885 - mmseg - INFO - Iter [93000/100000]	lr: 5.475e-05, eta: 0:23:46, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5910, decode.acc_seg: 97.9851, loss: 1.6167
+2024-04-03 22:10:48,711 - mmseg - INFO - Iter [93500/100000]	lr: 5.187e-05, eta: 0:22:04, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5885, decode.acc_seg: 97.9885, loss: 1.6142
+2024-04-03 22:12:27,346 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:12:27,347 - mmseg - INFO - Iter [94000/100000]	lr: 4.896e-05, eta: 0:20:22, time: 0.197, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0255, decode.loss_dice: 0.5890, decode.acc_seg: 98.0050, loss: 1.6145
+2024-04-03 22:14:03,984 - mmseg - INFO - Iter [94500/100000]	lr: 4.602e-05, eta: 0:18:40, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0255, decode.loss_dice: 0.5916, decode.acc_seg: 98.0048, loss: 1.6171
+2024-04-03 22:15:40,677 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:15:40,678 - mmseg - INFO - Iter [95000/100000]	lr: 4.306e-05, eta: 0:16:58, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0259, decode.loss_dice: 0.5861, decode.acc_seg: 97.9673, loss: 1.6120
+2024-04-03 22:16:22,509 - mmseg - INFO - per class results:
+2024-04-03 22:16:22,511 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.31 | 50.49 | 53.85 | 49.37 | 99.12 | 98.93  |   98.57   | 99.29  | 98.66 |
+|   tumor    |  82.1 |  66.7 | 55.09 |  55.6 | 78.76 | 86.44  |   90.42   | 83.01  | 83.05 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 22:16:22,512 - mmseg - INFO - Summary:
+2024-04-03 22:16:22,512 - mmseg - INFO - 
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+|  aAcc |  mIoU |  mVOE |  mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+| 98.41 | 90.21 | 58.59 | 54.47 | 52.49 | 88.94 |  92.69  |   94.49    |  91.15  | 90.86 |
++-------+-------+-------+-------+-------+-------+---------+------------+---------+-------+
+2024-04-03 22:16:22,521 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:16:22,521 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9841, mIoU: 0.9021, mVOE: 0.5859, mASD: 0.5447, mMSSD: 0.5249, mAcc: 0.8894, mFscore: 0.9269, mPrecision: 0.9449, mRecall: 0.9115, mDice: 0.9086, IoU.background: 0.9831, IoU.tumor: 0.8210, VOE.background: 0.5049, VOE.tumor: 0.6670, ASD.background: 0.5385, ASD.tumor: 0.5509, MSSD.background: 0.4937, MSSD.tumor: 0.5560, Acc.background: 0.9912, Acc.tumor: 0.7876, Fscore.background: 0.9893, Fscore.tumor: 0.8644, Precision.background: 0.9857, Precision.tumor: 0.9042, Recall.background: 0.9929, Recall.tumor: 0.8301, Dice.background: 0.9866, Dice.tumor: 0.8305
+2024-04-03 22:18:01,522 - mmseg - INFO - Iter [95500/100000]	lr: 4.007e-05, eta: 0:15:18, time: 0.282, data_time: 0.090, memory: 2625, decode.loss_bce: 1.0254, decode.loss_dice: 0.5909, decode.acc_seg: 98.0198, loss: 1.6162
+2024-04-03 22:19:38,842 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:19:38,843 - mmseg - INFO - Iter [96000/100000]	lr: 3.705e-05, eta: 0:13:35, time: 0.195, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0256, decode.loss_dice: 0.5870, decode.acc_seg: 97.9989, loss: 1.6125
+2024-04-03 22:21:15,905 - mmseg - INFO - Iter [96500/100000]	lr: 3.399e-05, eta: 0:11:53, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0255, decode.loss_dice: 0.5869, decode.acc_seg: 98.0093, loss: 1.6124
+2024-04-03 22:22:55,269 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:22:55,270 - mmseg - INFO - Iter [97000/100000]	lr: 3.088e-05, eta: 0:10:11, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0253, decode.loss_dice: 0.5940, decode.acc_seg: 98.0237, loss: 1.6193
+2024-04-03 22:24:32,025 - mmseg - INFO - Iter [97500/100000]	lr: 2.772e-05, eta: 0:08:29, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0255, decode.loss_dice: 0.5874, decode.acc_seg: 98.0106, loss: 1.6129
+2024-04-03 22:26:08,868 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:26:08,868 - mmseg - INFO - Iter [98000/100000]	lr: 2.450e-05, eta: 0:06:47, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0254, decode.loss_dice: 0.5909, decode.acc_seg: 98.0138, loss: 1.6163
+2024-04-03 22:27:47,716 - mmseg - INFO - Iter [98500/100000]	lr: 2.119e-05, eta: 0:05:05, time: 0.198, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0257, decode.loss_dice: 0.5869, decode.acc_seg: 97.9896, loss: 1.6125
+2024-04-03 22:29:24,327 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:29:24,328 - mmseg - INFO - Iter [99000/100000]	lr: 1.777e-05, eta: 0:03:23, time: 0.193, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0254, decode.loss_dice: 0.5882, decode.acc_seg: 98.0121, loss: 1.6136
+2024-04-03 22:31:01,082 - mmseg - INFO - Iter [99500/100000]	lr: 1.417e-05, eta: 0:01:41, time: 0.194, data_time: 0.002, memory: 2625, decode.loss_bce: 1.0255, decode.loss_dice: 0.5853, decode.acc_seg: 98.0092, loss: 1.6108
+2024-04-03 22:32:39,786 - mmseg - INFO - Saving checkpoint at 100000 iterations
+2024-04-03 22:32:40,520 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:32:40,521 - mmseg - INFO - Iter [100000/100000]	lr: 1.002e-05, eta: 0:00:00, time: 0.199, data_time: 0.006, memory: 2625, decode.loss_bce: 1.0253, decode.loss_dice: 0.5941, decode.acc_seg: 98.0243, loss: 1.6194
+2024-04-03 22:33:22,300 - mmseg - INFO - per class results:
+2024-04-03 22:33:22,301 - mmseg - INFO - 
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+|   Class    |  IoU  |  VOE  |  ASD  |  MSSD |  Acc  | Fscore | Precision | Recall |  Dice |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+| background | 98.31 | 50.49 | 53.85 |  49.4 | 99.18 | 98.92  |   98.51   | 99.34  | 98.66 |
+|   tumor    | 81.87 | 66.93 | 55.15 | 55.88 | 77.88 | 86.23  |   90.89   | 82.31  | 82.79 |
++------------+-------+-------+-------+-------+-------+--------+-----------+--------+-------+
+2024-04-03 22:33:22,302 - mmseg - INFO - Summary:
+2024-04-03 22:33:22,302 - mmseg - INFO - 
++------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+| aAcc |  mIoU |  mVOE | mASD | mMSSD |  mAcc | mFscore | mPrecision | mRecall | mDice |
++------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+| 98.4 | 90.09 | 58.71 | 54.5 | 52.64 | 88.53 |  92.58  |    94.7    |  90.83  | 90.72 |
++------+-------+-------+------+-------+-------+---------+------------+---------+-------+
+2024-04-03 22:33:22,311 - mmseg - INFO - Exp name: resunet.py
+2024-04-03 22:33:22,311 - mmseg - INFO - Iter(val) [1526]	aAcc: 0.9840, mIoU: 0.9009, mVOE: 0.5871, mASD: 0.5450, mMSSD: 0.5264, mAcc: 0.8853, mFscore: 0.9258, mPrecision: 0.9470, mRecall: 0.9083, mDice: 0.9072, IoU.background: 0.9831, IoU.tumor: 0.8187, VOE.background: 0.5049, VOE.tumor: 0.6693, ASD.background: 0.5385, ASD.tumor: 0.5515, MSSD.background: 0.4940, MSSD.tumor: 0.5588, Acc.background: 0.9918, Acc.tumor: 0.7788, Fscore.background: 0.9892, Fscore.tumor: 0.8623, Precision.background: 0.9851, Precision.tumor: 0.9089, Recall.background: 0.9934, Recall.tumor: 0.8231, Dice.background: 0.9866, Dice.tumor: 0.8279
